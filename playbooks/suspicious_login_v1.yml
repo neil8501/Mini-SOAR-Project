@@ -1,0 +1,27 @@
+name: suspicious_login_v1
+trigger: login
+steps:
+  - type: extract
+    with:
+      fields: [user, ip, user_agent, country, city, ts, lat, lon, success, mfa_fatigue]
+  - type: enrich
+    with:
+      ip_reputation: local_bad_ip_list
+      prev_login_context: timeline_lookup
+  - type: score
+    with:
+      rules:
+        - new_country_success: 30
+        - impossible_travel: 40
+        - ip_reputation_bad: 30
+        - mfa_fatigue_signals: 25
+  - type: decide
+    with:
+      thresholds:
+        medium: 30
+        high: 60
+        critical: 80
+  - type: action
+    with:
+      when: "severity >= high"
+      actions: [create_ticket, notify]

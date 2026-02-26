@@ -1,0 +1,72 @@
+# --- secrets ---
+.env
+.env.*
+!.env.example
+
+# --- python ---
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.venv/
+venv/
+
+# --- node / next ---
+frontend/node_modules/
+frontend/.next/
+frontend/.turbo/
+frontend/npm-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+
+# --- data artifacts (generated) ---
+data/reports/
+data/blocklist.json
+
+# If you want to keep threatfeeds in git, DO NOT ignore data/threatfeeds/
+# data/
+
+# --- OS ---
+.DS_Store
+Thumbs.db
+
+# --- logs ---
+*.log
+
+# --- docker ---
+# Named volumes persist data between containers - do not commit
+mini_soar_pgdata/
+
+# --- coverage & testing ---
+.coverage
+htmlcov/
+.coverage.*
+*.cover
+.pytest_cache/
+coverage.xml
+*.cover
+
+# --- IDE ---
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# --- python distributions ---
+*.egg-info/
+dist/
+build/
+*.egg
+
+# --- celery ---
+celerybeat-schedule
+celerybeat.pid
+
+# --- misc ---
+*.bak
+*.tmp
+cache/

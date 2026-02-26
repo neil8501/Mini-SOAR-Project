@@ -1,0 +1,11 @@
+apiVersion: 1
+
+providers:
+  - name: "mini-soar"
+    orgId: 1
+    folder: "Mini-SOAR"
+    type: file
+    disableDeletion: true
+    editable: true
+    options:
+      path: /var/lib/grafana/dashboards

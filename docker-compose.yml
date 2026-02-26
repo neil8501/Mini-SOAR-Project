@@ -1,0 +1,116 @@
+services:
+  api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: mini-soar-api
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    command: >
+      bash -lc "uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload"
+
+  worker:
+    build:
+      context: ./worker
+      dockerfile: Dockerfile
+    container_name: mini-soar-worker
+    env_file:
+      - ./.env
+    volumes:
+      - ./worker:/app
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      pushgateway:
+        condition: service_started
+    command: >
+      bash -lc "celery -A tasks worker --loglevel=INFO"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mini-soar-frontend
+    environment:
+      NEXT_PUBLIC_API_BASE: "http://localhost:8000"
+    ports:
+      - "3001:3000"
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+      - /app/.next
+    depends_on:
+      - api
+    command: >
+      sh -lc "npm install && npm run dev -- -p 3000"
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: mini-soar-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-mini}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-mini}
+      POSTGRES_DB: ${POSTGRES_DB:-minisoar}
+    ports:
+      - "5432:5432"
+    volumes:
+      - mini_soar_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-mini} -d ${POSTGRES_DB:-minisoar}"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    container_name: mini-soar-redis
+    ports:
+      - "6379:6379"
+
+  pushgateway:
+    image: prom/pushgateway:v1.9.0
+    container_name: mini-soar-pushgateway
+    ports:
+      - "9091:9091"
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: mini-soar-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    depends_on:
+      - api
+      - pushgateway
+
+  grafana:
+    image: grafana/grafana:11.2.2
+    container_name: mini-soar-grafana
+    ports:
+      - "3000:3000"
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: admin
+      GF_USERS_ALLOW_SIGN_UP: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    depends_on:
+      - prometheus
+
+volumes:
+  mini_soar_pgdata:

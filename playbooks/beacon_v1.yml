@@ -1,0 +1,26 @@
+name: beacon_v1
+trigger: beacon
+steps:
+  - type: extract
+    with:
+      fields: [dst_domain, dst_ip, hosts, timestamps, intervals, periodic]
+  - type: enrich
+    with:
+      dns: true
+      rdap: true
+  - type: score
+    with:
+      rules:
+        - periodicity_detected: 40
+        - domain_age_lt_30d: 20
+        - multi_host_beacon: 40
+  - type: decide
+    with:
+      thresholds:
+        medium: 30
+        high: 60
+        critical: 80
+  - type: action
+    with:
+      when: "severity >= high"
+      actions: [block_domain, block_ip, create_ticket, notify]

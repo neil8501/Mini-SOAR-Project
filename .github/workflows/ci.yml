@@ -1,0 +1,65 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install deps
+        run: poetry install
+
+      - name: Ruff
+        run: poetry run ruff check .
+
+      - name: Black
+        run: poetry run black --check .
+
+      - name: Pytest
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          WEBHOOK_API_KEY: "dev-webhook-key"
+          ADMIN_API_KEY: "dev-admin-key"
+          CELERY_BROKER_URL: "redis://localhost:6379/0"
+          CELERY_RESULT_BACKEND: "redis://localhost:6379/1"
+          REPORT_DIR: "/tmp/reports"
+          REPORT_GENERATE_PDF: "false"
+        run: poetry run pytest -q
+
+  worker:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: worker
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install deps
+        run: poetry install
+
+      - name: Ruff
+        run: poetry run ruff check .
+
+      - name: Black
+        run: poetry run black --check .
