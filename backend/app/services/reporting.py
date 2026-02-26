@@ -1,4 +1,3 @@
-import os
 import textwrap
 import uuid
 from datetime import datetime, timezone
@@ -37,12 +36,9 @@ def build_incident_report_markdown(
     timeline = session.exec(
         select(TimelineEvent).where(TimelineEvent.case_id == case_id).order_by(TimelineEvent.ts)
     ).all()
-    actions = session.exec(
-        select(Action).where(Action.case_id == case_id).order_by(Action.started_at)
-    ).all()
+    actions = session.exec(select(Action).where(Action.case_id == case_id).order_by(Action.started_at)).all()
     tickets = session.exec(select(Ticket).where(Ticket.case_id == case_id)).all()
 
-    # Summary observables
     by_type: dict[str, list[str]] = {}
     for a in artifacts:
         by_type.setdefault(a.type, []).append(a.value)
@@ -80,7 +76,9 @@ def build_incident_report_markdown(
         md.append("_No actions executed._")
     else:
         for a in actions:
-            md.append(f"- **{a.action_type}** | success={a.success} | started={_ts(a.started_at)} | finished={_ts(a.finished_at)}")
+            md.append(
+                f"- **{a.action_type}** | success={a.success} | started={_ts(a.started_at)} | finished={_ts(a.finished_at)}"
+            )
             if a.params:
                 md.append(f"  - params: `{a.params}`")
             if a.result:
@@ -104,7 +102,6 @@ def build_incident_report_markdown(
         for ev in timeline:
             md.append(f"- `{_ts(ev.ts)}` **{ev.event_type}** — {ev.message}")
             if ev.details:
-                # keep compact
                 md.append(f"  - details: `{ev.details}`")
     md.append("")
 
@@ -138,7 +135,6 @@ def write_report_files(case_id: uuid.UUID, markdown: str) -> dict[str, str]:
 
 
 def _markdown_to_simple_pdf(markdown: str, pdf_path: Path) -> None:
-    # Minimal, dependency-free markdown->PDF: render as wrapped plain text.
     c = canvas.Canvas(str(pdf_path), pagesize=LETTER)
     width, height = LETTER
 

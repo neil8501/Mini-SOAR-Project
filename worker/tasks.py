@@ -2,7 +2,7 @@ import json
 import math
 import time
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from pathlib import Path
 
 import dns.resolver
@@ -25,7 +25,6 @@ BLOCKLIST_PATH = Path("/data/blocklist.json")
 THREATFEED_DOMAINS_PATH = Path("/data/threatfeeds/sample_bad_domains.txt")
 THREATFEED_IPS_PATH = Path("/data/threatfeeds/sample_bad_ips.txt")
 
-# --- Worker metrics (pushed to Pushgateway) ---
 worker_registry = CollectorRegistry()
 cases_created_total = Counter(
     "cases_created_total",
@@ -57,7 +56,6 @@ def _push_metrics():
     try:
         push_to_gateway(settings.pushgateway_url, job="mini-soar-worker", registry=worker_registry)
     except Exception:
-        # metrics are best-effort; never break pipeline
         return
 
 
@@ -702,9 +700,7 @@ def process_alert(alert_id: str):
             _push_metrics()
             return {"ok": False, "error": "alert not found"}
 
-        existing_case = session.exec(
-            select(Case).where(Case.status == "open").where(Case.title == alert.dedup_hash)
-        ).first()
+        existing_case = session.exec(select(Case).where(Case.status == "open").where(Case.title == alert.dedup_hash)).first()
 
         if existing_case:
             case = existing_case
@@ -751,9 +747,6 @@ def process_alert(alert_id: str):
         if created:
             cases_created_total.labels(type=case_type).inc()
 
-        # -----------------
-        # PHISHING
-        # -----------------
         if alert.source == "email":
             extracted = _extract_phishing(alert.raw_payload)
 
@@ -823,9 +816,6 @@ def process_alert(alert_id: str):
 
             playbook_runs_total.labels(playbook="phishing_v1", outcome="ok").inc()
 
-        # -----------------
-        # LOGIN
-        # -----------------
         elif alert.source == "auth":
             extracted = _extract_login(alert.raw_payload)
 
@@ -862,11 +852,7 @@ def process_alert(alert_id: str):
 
             prev_ctx = None
             if user:
-                rows = session.exec(
-                    select(TimelineEvent)
-                    .where(TimelineEvent.event_type == "login_context")
-                    .order_by(TimelineEvent.ts.desc())
-                ).all()
+                rows = session.exec(select(TimelineEvent).where(TimelineEvent.event_type == "login_context").order_by(TimelineEvent.ts.desc())).all()
                 for r in rows[:200]:
                     try:
                         if (r.details or {}).get("user") == user:
@@ -933,9 +919,6 @@ def process_alert(alert_id: str):
 
             playbook_runs_total.labels(playbook="suspicious_login_v1", outcome="ok").inc()
 
-        # -----------------
-        # BEACON
-        # -----------------
         elif alert.source == "network":
             extracted = _extract_beacon(alert.raw_payload)
 
@@ -1015,29 +998,20 @@ def process_alert(alert_id: str):
 
     _push_metrics()
 
-    # Auto actions (existing behavior)
     if case_type == "phishing" and severity in ("high", "critical"):
         for d in (extracted.get("domains") or []):
             celery_app.send_task("run_action", args=[case_id_str, "block_domain", {"domain": d}])
         celery_app.send_task("run_action", args=[case_id_str, "create_ticket", {}])
         celery_app.send_task(
             "run_action",
-            args=[
-                case_id_str,
-                "notify",
-                {"message": f"Auto-response: phishing case {case_id_str} severity={severity} score={score}"},
-            ],
+            args=[case_id_str, "notify", {"message": f"Auto-response: phishing case {case_id_str} severity={severity} score={score}"}],
         )
 
     if case_type == "login" and severity in ("high", "critical"):
         celery_app.send_task("run_action", args=[case_id_str, "create_ticket", {}])
         celery_app.send_task(
             "run_action",
-            args=[
-                case_id_str,
-                "notify",
-                {"message": f"Auto-response: suspicious login case {case_id_str} severity={severity} score={score}"},
-            ],
+            args=[case_id_str, "notify", {"message": f"Auto-response: suspicious login case {case_id_str} severity={severity} score={score}"}],
         )
 
     if case_type == "beacon" and severity in ("high", "critical"):
@@ -1048,11 +1022,7 @@ def process_alert(alert_id: str):
         celery_app.send_task("run_action", args=[case_id_str, "create_ticket", {}])
         celery_app.send_task(
             "run_action",
-            args=[
-                case_id_str,
-                "notify",
-                {"message": f"Auto-response: beacon case {case_id_str} severity={severity} score={score}"},
-            ],
+            args=[case_id_str, "notify", {"message": f"Auto-response: beacon case {case_id_str} severity={severity} score={score}"}],
         )
 
     return {"ok": True, "case_id": case_id_str}
