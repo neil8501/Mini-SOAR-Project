@@ -21,7 +21,7 @@ jobs:
         run: pip install poetry
 
       - name: Install deps
-        run: poetry install
+        run: poetry install --no-interaction --no-ansi
 
       - name: Ruff
         run: poetry run ruff check .
@@ -56,7 +56,7 @@ jobs:
         run: pip install poetry
 
       - name: Install deps
-        run: poetry install
+        run: poetry install --no-interaction --no-ansi
 
       - name: Ruff
         run: poetry run ruff check .

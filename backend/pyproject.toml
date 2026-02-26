@@ -3,8 +3,9 @@ name = "mini-soar-backend"
 version = "1.0.0"
 description = "Mini-SOAR Incident Automation Platform (local)"
 authors = ["You <you@example.com>"]
-readme = "../README.md"
-packages = [{ include = "app" }]
+
+# App/service repo, not a library package
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.11,<3.13"
